@@ -321,7 +321,7 @@
       background: var(--danger-color);
     }
     
-    /* Estilo para mensagem de erro */
+    /* Error message style */
     .error-message {
       background-color: #ffebee;
       color: #d32f2f;
@@ -501,7 +501,7 @@
       100% { transform: rotate(360deg); }
     }
     
-    /* Estilo para o contador de tempo */
+    /* Timer style */
     .ai-timer {
       font-size: 0.85rem;
       color: #666;
@@ -519,7 +519,7 @@
       margin-top: 5px;
     }
     
-    /* Estilo para o status da API */
+    /* API status style */
     #apiStatus {
       margin-top: 8px;
       font-size: 0.9em;
@@ -1142,7 +1142,7 @@
       <div id="aiForm" class="ai-form">
         <div class="ai-description">
           <p>Generate quick replies to GM/GN posts in the crypto community. These replies are designed to be direct responses to someone else's post.</p>
-          <p id="apiStatus" style="margin-top: 8px; font-size: 0.9em; color: #666;"><i class="fas fa-info-circle"></i> Verificando disponibilidade da API...</p>
+          <p id="apiStatus" style="margin-top: 8px; font-size: 0.9em; color: #666;"><i class="fas fa-info-circle"></i> Checking API availability...</p>
         </div>
         
         <div class="form-group">
@@ -1538,7 +1538,7 @@
     // Global variables
     let savedMessages = JSON.parse(localStorage.getItem('savedMessages')) || [];
     // Chave da API - Substitua por uma chave válida
-    const OPENAI_API_KEY = '';
+    const OPENAI_API_KEY = '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';
     let currentEditingMessage = null;
     let currentEditingIndex = -1;
     let isApiAvailable = false;
@@ -1550,14 +1550,14 @@
       
       if (!OPENAI_API_KEY || OPENAI_API_KEY.trim() === '') {
         timerElement.style.display = 'block';
-        timerElement.textContent = 'API indisponível (chave não configurada)';
-        apiStatusElement.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #e65100;"></i> API indisponível: chave não configurada. Usando templates offline.';
+        timerElement.textContent = 'API unavailable (key not configured)';
+        apiStatusElement.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #e65100;"></i> API unavailable: key not configured. Using offline templates.';
         isApiAvailable = false;
         return false;
       }
       
       try {
-        apiStatusElement.innerHTML = '<i class="fas fa-sync fa-spin" style="color: #1976d2;"></i> Verificando conexão com a API...';
+        apiStatusElement.innerHTML = '<i class="fas fa-sync fa-spin" style="color: #1976d2;"></i> Checking API connection...';
         
         const response = await fetch('https://api.openai.com/v1/models', {
           method: 'GET',
@@ -1570,20 +1570,20 @@
         
         if (data.error) {
           timerElement.style.display = 'block';
-          timerElement.textContent = 'API indisponível (chave inválida)';
-          apiStatusElement.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #e65100;"></i> API indisponível: chave inválida. Usando templates offline.';
+          timerElement.textContent = 'API unavailable (invalid key)';
+          apiStatusElement.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #e65100;"></i> API unavailable: invalid key. Using offline templates.';
           isApiAvailable = false;
           return false;
         }
         
-        apiStatusElement.innerHTML = '<i class="fas fa-check-circle" style="color: #2e7d32;"></i> API conectada: gerando respostas com IA.';
+        apiStatusElement.innerHTML = '<i class="fas fa-check-circle" style="color: #2e7d32;"></i> API connected: generating responses with AI.';
         isApiAvailable = true;
         return true;
       } catch (error) {
         console.error('Error checking API:', error);
         timerElement.style.display = 'block';
-        timerElement.textContent = 'API indisponível (erro de conexão)';
-        apiStatusElement.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #e65100;"></i> API indisponível: erro de conexão. Usando templates offline.';
+        timerElement.textContent = 'API unavailable (connection error)';
+        apiStatusElement.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #e65100;"></i> API unavailable: connection error. Using offline templates.';
         isApiAvailable = false;
         return false;
       }
@@ -1601,13 +1601,13 @@
       // Reset and show timer
       const timerElement = document.getElementById('aiTimer');
       timerElement.style.display = 'block';
-      timerElement.textContent = 'Tempo: 0.0s';
+      timerElement.textContent = 'Time: 0.0s';
       
       // Start timer
       const startTime = performance.now();
       const timerInterval = setInterval(() => {
         const elapsedTime = ((performance.now() - startTime) / 1000).toFixed(1);
-        timerElement.textContent = `Tempo: ${elapsedTime}s`;
+        timerElement.textContent = `Time: ${elapsedTime}s`;
       }, 100);
       
       try {
@@ -1698,7 +1698,7 @@
           // Stop timer and show final time
           clearInterval(timerInterval);
           const totalTime = ((performance.now() - startTime) / 1000).toFixed(1);
-          timerElement.textContent = `Gerado em ${totalTime}s`;
+          timerElement.textContent = `Generated in ${totalTime}s`;
           
           // Create message cards and display them
           displayMessages(messages);
@@ -1707,13 +1707,13 @@
           console.error('API Error:', apiError);
           // Fallback to templates if API fails
           clearInterval(timerInterval);
-          timerElement.textContent = 'Usando templates offline (API indisponível)';
+          timerElement.textContent = 'Using offline templates (API unavailable)';
           useFallbackTemplates(greetingType, messageLength, prompt);
         }
       } catch (error) {
         console.error('Error generating message:', error);
         clearInterval(timerInterval);
-        timerElement.textContent = 'Erro ao gerar resposta';
+        timerElement.textContent = 'Error generating response';
         
         const aiResults = document.getElementById('aiResults');
         aiResults.innerHTML = `
@@ -1733,7 +1733,7 @@
       console.log('Using fallback templates');
       const templates = defaultTemplates[greetingType][messageLength];
       
-      // Simular um pequeno atraso para parecer mais natural
+      // Simulate a small delay to appear more natural
       setTimeout(() => {
         // Get 3 random templates
         const randomResponses = [];
@@ -1770,8 +1770,8 @@
         displayMessages(randomResponses);
         
         // Show notification that we're using fallback
-        showNotification('Usando templates offline (API indisponível)', 'info');
-      }, 500); // Pequeno atraso para simular processamento
+        showNotification('Using offline templates (API unavailable)', 'info');
+      }, 500); // Small delay to simulate processing
     }
 
     // Function to display messages (extracted from generateAIMessage)
