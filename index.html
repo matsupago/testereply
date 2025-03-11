@@ -1558,115 +1558,45 @@
           systemPrompt += `\n- ${defaultTemplates[greetingType][messageLength][i]}`;
         }
         
-        // API call to OpenAI
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-3.5-turbo',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: `Someone posted "${greetingType}" on social media. Generate 3 ${messageLength} replies to them.` }
-            ],
-            temperature: 0.8, // Slightly higher temperature for more variety
-            max_tokens: 250
-          })
-        });
-        
-        const data = await response.json();
-        
-        if (data.error) {
-          throw new Error(data.error.message);
-        }
-        
-        // Process response
-        const content = data.choices[0].message.content;
-        const messages = content.split(/\n+/).filter(line => 
-          line.trim() && !line.startsWith('-') && !line.startsWith('*') && !line.startsWith('#')
-        );
-        
-        // Get the results container
-        const aiResults = document.getElementById('aiResults');
-        
-        // Create a document fragment to hold the new message cards
-        const fragment = document.createDocumentFragment();
-        
-        // Create message cards
-        messages.forEach(message => {
-          // Clean numbering and other characters at the beginning
-          const cleanMessage = message.replace(/^\d+[\.\)\-\s]+/, '').trim();
-          if (cleanMessage) {
-            const messageCard = document.createElement('div');
-            messageCard.className = 'message-card';
-            
-            const messageText = document.createElement('div');
-            messageText.className = 'message-text';
-            messageText.textContent = cleanMessage;
-            
-            const messageActions = document.createElement('div');
-            messageActions.className = 'message-actions';
-            
-            const copyBtn = document.createElement('button');
-            copyBtn.className = 'copy-btn';
-            copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
-            copyBtn.onclick = () => {
-              copyToClipboard(cleanMessage);
-            };
-            
-            const editBtn = document.createElement('button');
-            editBtn.className = 'edit-btn';
-            editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
-            editBtn.onclick = () => {
-              openEditModal(cleanMessage, messageText);
-            };
-            
-            const shareBtn = document.createElement('button');
-            shareBtn.className = 'share-btn';
-            shareBtn.innerHTML = 'Post on X';
-            shareBtn.onclick = () => {
-              shareOnTwitter(cleanMessage);
-            };
-            
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-            deleteBtn.onclick = () => {
-              deleteMessage(cleanMessage);
-            };
-            
-            messageActions.appendChild(copyBtn);
-            messageActions.appendChild(editBtn);
-            messageActions.appendChild(shareBtn);
-            messageActions.appendChild(deleteBtn);
-            
-            messageCard.appendChild(messageText);
-            messageCard.appendChild(messageActions);
-            
-            fragment.appendChild(messageCard);
-            
-            // Save message
-            savedMessages.unshift(cleanMessage);
+        try {
+          // API call to OpenAI
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-3.5-turbo',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `Someone posted "${greetingType}" on social media. Generate 3 ${messageLength} replies to them.` }
+              ],
+              temperature: 0.8, // Slightly higher temperature for more variety
+              max_tokens: 250
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.error) {
+            throw new Error(data.error.message);
           }
-        });
-        
-        // Clear previous results
-        aiResults.innerHTML = '';
-        aiResults.appendChild(fragment);
-        
-        // Limit to 50 saved messages
-        if (savedMessages.length > 50) {
-          savedMessages = savedMessages.slice(0, 50);
+          
+          // Process response
+          const content = data.choices[0].message.content;
+          const messages = content.split(/\n+/).filter(line => 
+            line.trim() && !line.startsWith('-') && !line.startsWith('*') && !line.startsWith('#')
+          );
+          
+          // Create message cards and display them
+          displayMessages(messages);
+          
+        } catch (apiError) {
+          console.error('API Error:', apiError);
+          // Fallback to templates if API fails
+          useFallbackTemplates(greetingType, messageLength, prompt);
         }
-        
-        // Save to localStorage
-        localStorage.setItem('savedMessages', JSON.stringify(savedMessages));
-        
-        // Update saved messages display
-        renderSavedMessages();
-        
       } catch (error) {
         console.error('Error generating message:', error);
         const aiResults = document.getElementById('aiResults');
@@ -1682,70 +1612,129 @@
       }
     }
 
-    // Function to regenerate messages
-    function regenerateMessages() {
-      generateAIMessage(true);
-    }
-
-    // Function to render saved messages
-    function renderSavedMessages() {
-      const savedMessagesList = document.getElementById('savedMessagesList');
-      savedMessagesList.innerHTML = '';
+    // Function to use fallback templates when API fails
+    function useFallbackTemplates(greetingType, messageLength, prompt) {
+      console.log('Using fallback templates');
+      const templates = defaultTemplates[greetingType][messageLength];
       
-      if (savedMessages.length === 0) {
-        savedMessagesList.innerHTML = '<p>No saved replies yet. Generate some replies to see them here.</p>';
-        return;
+      // Get 3 random templates
+      const randomResponses = [];
+      const usedIndices = new Set();
+      
+      while (randomResponses.length < 3 && randomResponses.length < templates.length) {
+        const randomIndex = Math.floor(Math.random() * templates.length);
+        if (!usedIndices.has(randomIndex)) {
+          let response = templates[randomIndex];
+          
+          // If there's a prompt, try to incorporate it
+          if (prompt) {
+            // Simple way to incorporate the topic
+            if (messageLength === 'short') {
+              response = response.replace('!', `! ${prompt.split(' ')[0]} `);
+            } else {
+              if (response.includes('bullish')) {
+                response = response.replace('bullish', `bullish on ${prompt}`);
+              } else if (response.includes('green')) {
+                response = response.replace('green', `${prompt} green`);
+              } else {
+                // Add topic at the end if we can't find a good place
+                response = response.replace('!', `! ${prompt} `);
+              }
+            }
+          }
+          
+          randomResponses.push(response);
+          usedIndices.add(randomIndex);
+        }
       }
       
-      savedMessages.forEach((message, index) => {
-        const messageCard = document.createElement('div');
-        messageCard.className = 'message-card';
-        
-        const messageText = document.createElement('div');
-        messageText.className = 'message-text';
-        messageText.textContent = message;
-        
-        const messageActions = document.createElement('div');
-        messageActions.className = 'message-actions';
-        
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'copy-btn';
-        copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
-        copyBtn.onclick = () => {
-          copyToClipboard(message);
-        };
-        
-        const editBtn = document.createElement('button');
-        editBtn.className = 'edit-btn';
-        editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
-        editBtn.onclick = () => {
-          openEditModal(message, messageText, index);
-        };
-        
-        const shareBtn = document.createElement('button');
-        shareBtn.className = 'share-btn';
-        shareBtn.innerHTML = 'Post on X';
-        shareBtn.onclick = () => {
-          shareOnTwitter(message);
-        };
-        
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-        deleteBtn.onclick = () => {
-          deleteMessage(index);
-        };
-        
-        messageActions.appendChild(copyBtn);
-        messageActions.appendChild(editBtn);
-        messageActions.appendChild(shareBtn);
-        messageActions.appendChild(deleteBtn);
-        
-        messageCard.appendChild(messageText);
-        messageCard.appendChild(messageActions);
-        
-        savedMessagesList.appendChild(messageCard);
+      // Display the fallback messages
+      displayMessages(randomResponses);
+      
+      // Show notification that we're using fallback
+      showNotification('Using offline mode with pre-defined templates', 'info');
+    }
+
+    // Function to display messages (extracted from generateAIMessage)
+    function displayMessages(messages) {
+      // Get the results container
+      const aiResults = document.getElementById('aiResults');
+      
+      // Create a document fragment to hold the new message cards
+      const fragment = document.createDocumentFragment();
+      
+      // Create message cards
+      messages.forEach(message => {
+        // Clean numbering and other characters at the beginning
+        const cleanMessage = message.replace(/^\d+[\.\)\-\s]+/, '').trim();
+        if (cleanMessage) {
+          const messageCard = document.createElement('div');
+          messageCard.className = 'message-card';
+          
+          const messageText = document.createElement('div');
+          messageText.className = 'message-text';
+          messageText.textContent = cleanMessage;
+          
+          const messageActions = document.createElement('div');
+          messageActions.className = 'message-actions';
+          
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'copy-btn';
+          copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+          copyBtn.onclick = () => {
+            copyToClipboard(cleanMessage);
+          };
+          
+          const editBtn = document.createElement('button');
+          editBtn.className = 'edit-btn';
+          editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
+          editBtn.onclick = () => {
+            openEditModal(cleanMessage, messageText);
+          };
+          
+          const shareBtn = document.createElement('button');
+          shareBtn.className = 'share-btn';
+          shareBtn.innerHTML = 'Post on X';
+          shareBtn.onclick = () => {
+            shareOnTwitter(cleanMessage);
+          };
+          
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'delete-btn';
+          deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+          deleteBtn.onclick = () => {
+            deleteMessage(cleanMessage);
+          };
+          
+          messageActions.appendChild(copyBtn);
+          messageActions.appendChild(editBtn);
+          messageActions.appendChild(shareBtn);
+          messageActions.appendChild(deleteBtn);
+          
+          messageCard.appendChild(messageText);
+          messageCard.appendChild(messageActions);
+          
+          fragment.appendChild(messageCard);
+          
+          // Save message
+          savedMessages.unshift(cleanMessage);
+        }
       });
+      
+      // Clear previous results
+      aiResults.innerHTML = '';
+      aiResults.appendChild(fragment);
+      
+      // Limit to 50 saved messages
+      if (savedMessages.length > 50) {
+        savedMessages = savedMessages.slice(0, 50);
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('savedMessages', JSON.stringify(savedMessages));
+      
+      // Update saved messages display
+      renderSavedMessages();
     }
 
     // Função para copiar mensagem para a área de transferência
@@ -1755,14 +1744,23 @@
       });
     }
 
-    // Função para excluir mensagem
-    function deleteMessage(index) {
-      // Remove from saved messages
-      savedMessages.splice(index, 1);
-      localStorage.setItem('savedMessages', JSON.stringify(savedMessages));
-      renderSavedMessages();
+    // Função para excluir mensagem - corrigida para lidar com strings e índices
+    function deleteMessage(indexOrMessage) {
+      let index = indexOrMessage;
       
-      showNotification('Reply deleted!');
+      // Se for uma string (conteúdo da mensagem), encontre o índice
+      if (typeof indexOrMessage === 'string') {
+        index = savedMessages.indexOf(indexOrMessage);
+      }
+      
+      // Remove from saved messages if index is valid
+      if (index >= 0 && index < savedMessages.length) {
+        savedMessages.splice(index, 1);
+        localStorage.setItem('savedMessages', JSON.stringify(savedMessages));
+        renderSavedMessages();
+        
+        showNotification('Reply deleted!');
+      }
     }
 
     // Função para limpar todas as mensagens
@@ -1871,6 +1869,67 @@
       
       const encodedMessage = encodeURIComponent(tweetText);
       window.open(`https://twitter.com/intent/tweet?text=${encodedMessage}`, '_blank');
+    }
+
+    // Function to render saved messages
+    function renderSavedMessages() {
+      const savedMessagesList = document.getElementById('savedMessagesList');
+      savedMessagesList.innerHTML = '';
+      
+      if (savedMessages.length === 0) {
+        savedMessagesList.innerHTML = '<p>No saved replies yet. Generate some replies to see them here.</p>';
+        return;
+      }
+      
+      savedMessages.forEach((message, index) => {
+        const messageCard = document.createElement('div');
+        messageCard.className = 'message-card';
+        
+        const messageText = document.createElement('div');
+        messageText.className = 'message-text';
+        messageText.textContent = message;
+        
+        const messageActions = document.createElement('div');
+        messageActions.className = 'message-actions';
+        
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+        copyBtn.onclick = () => {
+          copyToClipboard(message);
+        };
+        
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
+        editBtn.onclick = () => {
+          openEditModal(message, messageText, index);
+        };
+        
+        const shareBtn = document.createElement('button');
+        shareBtn.className = 'share-btn';
+        shareBtn.innerHTML = 'Post on X';
+        shareBtn.onclick = () => {
+          shareOnTwitter(message);
+        };
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        deleteBtn.onclick = () => {
+          deleteMessage(index);
+        };
+        
+        messageActions.appendChild(copyBtn);
+        messageActions.appendChild(editBtn);
+        messageActions.appendChild(shareBtn);
+        messageActions.appendChild(deleteBtn);
+        
+        messageCard.appendChild(messageText);
+        messageCard.appendChild(messageActions);
+        
+        savedMessagesList.appendChild(messageCard);
+      });
     }
   </script>
 </body>
